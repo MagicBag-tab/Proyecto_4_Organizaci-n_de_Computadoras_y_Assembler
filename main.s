@@ -71,26 +71,19 @@
 .equ LED6_OFF,       	(0 << 6)		//velocidad 1
 
 
-//Valores para configurar PORT C
-.equ GPIOC_BASE,     	0x40020800
-.equ GPIOC_MODER,		(GPIOC_BASE + GPIO_MODER_OFFSET)
+//Valores Habilitar Puerto C
+.equ GPIOC_BASE,			0x40020800
+.equ GPIOC_MODER_OFFSET,	0x00
+.equ GPIOC_MODER,			(GPIOC_BASE + GPIOC_MODER_OFFSET)
 
-//valores para configurar pines de salida
-.equ GPIO_IDR_OFFSET,	0x10
+//Valores configurar PORT 13C Y 14C
+.equ IDR_OFFSET, 			0x10
+.equ GPIOC_IDR, 			(GPIOC_BASE + IDR_OFFSET)
 
-//Para PORT C
-.equ MODER8_IN,     	(1 << 16)
-.equ MODER7_IN,     	(1 << 14)
-.equ MODER6_IN,     	(1 << 12)
+.equ BTN_UP_PIN,			0x2000 //PC13
+.equ BTN_DOWN_PIN,			0x1000	//PC12
 
-.equ GPIOC_IDR,      	(GPIOC_BASE + GPIO_IDR_OFFSET)
-
-.equ BUTTON_OFF,        0x2000
-.equ BUTTON_ON,			0x0000
-
-.equ BTN_PIN8,			(1 << 8)		//velocidad 3
-.equ BTN_PIN7,			(1 << 7)		//velocidad 2
-.equ BTN_PIN6,			(1 << 6)		//velocidad 1
+.equ BUTTON_PRESSED,		0x0000
 
 .syntax unified
 .cpu cortex-m4
@@ -100,11 +93,72 @@
 .section .text
 .globl __main
 
+
 __main:
+
+loop:
+	//Leer el estado de los botones
+	LDR R0, =GPIOC_IDR
+	LDR R1, [R0]
+
+	//Verifica si es el boton de subir
+	TST R1, #BTN_UP_PIN
+    BEQ boton_subir
+
+    ////Verifica si es el boton de bajar
+    TST R1, #BTN_DOWN_PIN
+    BEQ boton_bajar
+
+	B loop
+
+boton_subir:
+	LDR R5, =delay_var
+	LDR R6, [R5]
+	SUB R6, R6, #50000
+	LDR R7, =delay_min
+	LDR R8, [R7]
+	BGT subir_vel
+	MOV R6, R8
+
+subir_vel:
+	STR R6, [R5]
+    B wait_release
+
+
+boton_bajar:
+	LDR R5, =delay_var
+	LDR R6, [R5]
+	ADD R6, R6, #50000
+	LDR R7, =delay_max
+	LDR R8, [R7]
+	BLT bajar_vel
+	MOV R6, R8
+
+bajar_vel:
+	STR R6, [R5]
+	B wait_release
+
+wait_release:
+	LDR R0, =GPIOC_IDR
+	LDR R1, [R0]
+	TST R1, #BTN_UP_PIN
+    BEQ wait_release	//Si sigue presionado el boton de subir va a repetir ciclo
+    TST R1, #BTN_DOWN_PIN
+    BEQ wait_release	//Si sigue presionado el boyon de bakar va a repetir ciclo
+    B loop				// ambos estan suelto, va a regresar al loop
+
+end:
+    B end
+
+reloj:
 
 
 // Sección de datos
 .section .data
+delay_var: .word 150000     // Valor de delay inicial 1.5s
+delay_min: .word 50000      // Delay min de 0.5s
+delay_max: .word 3000000 	// Delay max de 3.0s
+
 
 //Directivas finales
 .align
