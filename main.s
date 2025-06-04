@@ -75,14 +75,12 @@
 .equ GPIOC_MODER_OFFSET,	0x00
 .equ GPIOC_MODER,			(GPIOC_BASE + GPIOC_MODER_OFFSET)
 
-//Valores configurar PORT 13C Y 14C
+//Valores configurar PORT 13C Y 12C
 .equ IDR_OFFSET, 			0x10
 .equ GPIOC_IDR, 			(GPIOC_BASE + IDR_OFFSET)
 
 .equ BTN_UP_PIN,			0x2000 //PC13
 .equ BTN_DOWN_PIN,			0x1000	//PC12
-
-.equ BUTTON_PRESSED,		0x0000
 
 //Inicial código
 .syntax unified
@@ -151,9 +149,8 @@ loop:
     LDR R5, [R4]
     ADD R5, R5, #1
     CMP R5, #8
-    IT GE
-    MOVGE R5, #0 // Reiniciar a 0 si llega a 8
-    STR R5, [R4]
+    BNE no_reset
+    MOV R5, #0 // Reiniciar a 0 si llega a 8
 
     // Mostrar dígito según contador
     CMP R5, #0
@@ -177,6 +174,9 @@ loop:
     BL delay
 
     B loop
+
+no_reset:
+    STR R5, [R4]
 
 estado_0: // Enciende a, b, c, d, e, f (0)
     LDR R0, =GPIOA_ODR
