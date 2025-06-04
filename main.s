@@ -1,88 +1,53 @@
 /*
 **********************************************************************************************
 *@file      main.s
-*@author    Sarah Estrada
-*			Kristel Castillo
-*			Yu-Fong Chen
-*@date      May, 2025 - June 2025
-*@brief     Proyecto 4, Programa contador de 0 a 7 en Assembly al que se le puede
-*           aumentar o disminuir la velocidad.
-*@details
-*			-
+*@authors
+*			Kristel Castillo - Yu Fong Chen - Sarah Estrada
+*@date		June 2025
+*@brief     Contador de 0 a 7 en display 7 segmentos con control de velocidad
+*@details   Versión corregida con solución para segmentos G y B
 **********************************************************************************************
 */
 
-//Valores para habilitar el CLK AHB1 PORT A y PORT B y PORT C
-.equ RCC_BASE,       	0x40023800
-.equ AHB1ENR_OFFSET, 	0x30
-.equ RCC_AHB1ENR,    	(RCC_BASE + AHB1ENR_OFFSET)
-.equ GPIOA_EN,       	(1 << 0)
-.equ GPIOB_EN,       	(1 << 1)
-.equ GPIOC_EN,       	(1 << 2)
+/* --- Definiciones de registros --- */
+.equ RCC_BASE,       0x40023800
+.equ AHB1ENR_OFFSET, 0x30
+.equ RCC_AHB1ENR,    (RCC_BASE + AHB1ENR_OFFSET)
+.equ GPIOA_EN,       (1 << 0)
+.equ GPIOB_EN,       (1 << 1)
+.equ GPIOC_EN,       (1 << 2)
 
-//Valores para configurar los pines de salida
-.equ GPIO_MODER_OFFSET, 0x00
-.equ GPIO_ODR_OFFSET,	0x14
+/* --- Configuración GPIOA (Display 7 segmentos) --- */
+.equ GPIOA_BASE,     0x40020000
+.equ GPIOA_MODER,    (GPIOA_BASE + 0x00)
+.equ GPIOA_ODR,      (GPIOA_BASE + 0x14)
 
-//Para el PORT A
-.equ GPIOA_BASE,     	0x40020000
-.equ GPIOA_MODER,    	(GPIOA_BASE + GPIO_MODER_OFFSET)
+/* Segmentos del display - CORREGIDO para segmentos G y B */
+.equ SEG_A,         (1 << 9)   // PA9
+.equ SEG_B,         (1 << 10)  // PA10 - Segmento B
+.equ SEG_C,         (1 << 11)  // PA11
+.equ SEG_D,         (1 << 12)  // PA12
+.equ SEG_E,         (1 << 15)  // PA15
+.equ SEG_F,         (1 << 7)   // PA7
+.equ SEG_G,         (1 << 6)   // PA6 - Segmento G
 
-.equ MODER15_OUT,     	(1 << 30)
-.equ MODER14_OUT,     	(1 << 28)
-.equ MODER13_OUT,     	(1 << 26)
-.equ MODER12_OUT,     	(1 << 24)
-.equ MODER11_OUT,     	(1 << 22)
-.equ MODER10_OUT,     	(1 << 20)
-.equ MODER9_OUT,     	(1 << 18)
+/* --- Configuración GPIOB (LEDs de velocidad) --- */
+.equ GPIOB_BASE,    0x40020400
+.equ GPIOB_MODER,   (GPIOB_BASE + 0x00)
+.equ GPIOB_ODR,     (GPIOB_BASE + 0x14)
+.equ LED_VEL1,      (1 << 6)   // PB6 - LED velocidad mínima
+.equ LED_VEL2,      (1 << 7)   // PB7
+.equ LED_VEL3,      (1 << 8)   // PB8
 
-.equ GPIOA_ODR,      	(GPIOA_BASE + GPIO_ODR_OFFSET)
+/* --- Configuración GPIOC (Botones) --- */
+.equ GPIOC_BASE,    0x40020800
+.equ GPIOC_MODER,   (GPIOC_BASE + 0x00)
+.equ GPIOC_IDR,     (GPIOC_BASE + 0x10)
+.equ GPIOC_PUPDR,   (GPIOC_BASE + 0x0C)
+.equ BTN_UP_PIN,    0x2000     // PC13
+.equ BTN_DOWN_PIN,  0x1000     // PC12
 
-.equ LED15_ON,        	(1 << 15)		//segmento g
-.equ LED15_OFF,       	(0 << 15)		//segmento g
-.equ LED14_ON,        	(1 << 14)		//segmento f
-.equ LED14_OFF,       	(0 << 14)		//segmento f
-.equ LED13_ON,        	(1 << 13)		//segmento e
-.equ LED13_OFF,       	(0 << 13)		//segmento e
-.equ LED12_ON,        	(1 << 12)		//segmento d
-.equ LED12_OFF,       	(0 << 12)		//segmento d
-.equ LED11_ON,        	(1 << 11)		//segmento c
-.equ LED11_OFF,       	(0 << 11)		//segmento c
-.equ LED10_ON,        	(1 << 10)		//segmento b
-.equ LED10_OFF,       	(0 << 10)		//segmento b
-.equ LED9_ON,        	(1 << 9)		//segmento a
-.equ LED9_OFF,       	(0 << 9)		//segmento a
-
-//Para el PORT B
-.equ GPIOB_BASE,		0x40020400
-.equ GPIOB_MODER,		(GPIOB_BASE + GPIO_MODER_OFFSET)
-
-.equ MODER8_OUT,     	(1 << 16)
-.equ MODER7_OUT,     	(1 << 14)
-.equ MODER6_OUT,     	(1 << 12)
-
-.equ GPIOB_ODR,      	(GPIOB_BASE + GPIO_ODR_OFFSET)
-
-.equ LED8_ON,        	(1 << 8)		//velocidad 3
-.equ LED8_OFF,       	(0 << 8)		//velocidad 3
-.equ LED7_ON,        	(1 << 7)		//velocidad 2
-.equ LED7_OFF,       	(0 << 7)		//velocidad 2
-.equ LED6_ON,        	(1 << 6)		//velocidad 1
-.equ LED6_OFF,       	(0 << 6)		//velocidad 1
-
-//Valores Habilitar Puerto C
-.equ GPIOC_BASE,			0x40020800
-.equ GPIOC_MODER_OFFSET,	0x00
-.equ GPIOC_MODER,			(GPIOC_BASE + GPIOC_MODER_OFFSET)
-
-//Valores configurar PORT 13C Y 12C
-.equ IDR_OFFSET, 			0x10
-.equ GPIOC_IDR, 			(GPIOC_BASE + IDR_OFFSET)
-
-.equ BTN_UP_PIN,			0x2000 //PC13
-.equ BTN_DOWN_PIN,			0x1000	//PC12
-
-//Inicial código
+/* --- Inicialización --- */
 .syntax unified
 .cpu cortex-m4
 .fpu softvfp
@@ -92,203 +57,232 @@
 .globl __main
 
 __main:
-    // Habilitar relojes para los puertos
-    BL reloj
+    /* Habilitar relojes para GPIOA, GPIOB y GPIOC */
+    BL reloj_config
 
-    // Configurar pines de LED de velocidad como salidas
+    /* Configurar pines de LED de velocidad como salidas */
     LDR R0, =GPIOB_MODER
     LDR R1, [R0]
-    ORR R1, #(MODER6_OUT | MODER7_OUT | MODER8_OUT)
+    /* PB6, PB7, PB8 como salidas (01) */
+    BIC R1, #((3 << 12) | (3 << 14) | (3 << 16))  // Limpiar bits
+    ORR R1, #((1 << 12) | (1 << 14) | (1 << 16))  // Configurar como salidas
     STR R1, [R0]
 
-    // Inicializar LEDs de velocidad apagados
+    /* Inicializar LEDs de velocidad apagados */
     LDR R0, =GPIOB_ODR
-    MOV R1, #(LED6_OFF | LED7_OFF | LED8_OFF)
+    MOV R1, #0
     STR R1, [R0]
 
-    // Configurar pines de 7 segmentos como salidas
+    /* Configurar pines de 7 segmentos como salidas - CORREGIDO */
     LDR R0, =GPIOA_MODER
     LDR R1, [R0]
-    ORR R1, #(MODER9_OUT | MODER10_OUT)  // Configurar PA9 y PA10
-    ORR R1, #(MODER11_OUT | MODER12_OUT) // Configurar PA11 y PA12
-    ORR R1, #(MODER13_OUT | MODER14_OUT) // Configurar PA13 y PA14
-    ORR R1, #MODER15_OUT                  // Configurar PA15
+    /* Limpiar configuraciones previas para los pines que usaremos */
+    BIC R1, #(0xFF << 12)  // Limpia PA6,PA7,PA9,PA10
+    BIC R1, #(0xF << 22)   // Limpia PA11,PA12
+    BIC R1, #(3 << 30)     // Limpia PA15
+    /* Configurar como salidas (01) */
+    ORR R1, #(0x55 << 12)  // PA6,PA7,PA9,PA10 como salidas (01010101)
+    ORR R1, #(0x5 << 22)   // PA11,PA12 como salidas (0101)
+    ORR R1, #(1 << 30)     // PA15 como salida (01)
     STR R1, [R0]
 
-    // Configurar pines de botones como entradas (00 en MODER para PC12 y PC13)
+    /* Configurar botones con pull-up */
     LDR R0, =GPIOC_MODER
     LDR R1, [R0]
-    BIC R1, #(3 << 24) // Limpiar bits para PC12
-    BIC R1, #(3 << 26) // Limpiar bits para PC13
+    BIC R1, #(3 << 24)       // PC12 como entrada
+    BIC R1, #(3 << 26)       // PC13 como entrada
     STR R1, [R0]
 
-    // Inicializar contador
+    LDR R0, =GPIOC_PUPDR
+    LDR R1, [R0]
+    BIC R1, #(3 << 24)       // Limpiar configuración previa PC12
+    BIC R1, #(3 << 26)       // Limpiar configuración previa PC13
+    ORR R1, #(1 << 24)       // Pull-up para PC12
+    ORR R1, #(1 << 26)       // Pull-up para PC13
+    STR R1, [R0]
+
+    /* Inicializar variables */
     LDR R4, =contador
     MOV R5, #0
     STR R5, [R4]
 
-    // Mostrar dígito inicial (0)
-    BL estado_0
+    LDR R0, =delay_var
+    LDR R1, =500000         // Valor inicial más lento
+    STR R1, [R0]
 
-loop:
-    // Actualizar LEDs de velocidad según delay_var
+    /* Mostrar dígito inicial (0) */
+    BL display_0
+
+/* --- Loop principal --- */
+main_loop:
     BL actualizar_leds_velocidad
-
-    // Leer estado de los botones
-    LDR R0, =GPIOC_IDR
-    LDR R1, [R0]
-
-    // Verificar botones
-    TST R1, #BTN_UP_PIN
-    BEQ boton_subir
-    TST R1, #BTN_DOWN_PIN
-    BEQ boton_bajar
-
-    // Incrementar contador
-    LDR R4, =contador
-    LDR R5, [R4]
-    ADD R5, R5, #1
-    CMP R5, #8
-    BNE no_reset
-    MOV R5, #0 // Reiniciar a 0 si llega a 8
-
-    // Mostrar dígito según contador
-    CMP R5, #0
-    BEQ estado_0
-    CMP R5, #1
-    BEQ estado_1
-    CMP R5, #2
-    BEQ estado_2
-    CMP R5, #3
-    BEQ estado_3
-    CMP R5, #4
-    BEQ estado_4
-    CMP R5, #5
-    BEQ estado_5
-    CMP R5, #6
-    BEQ estado_6
-    CMP R5, #7
-    BEQ estado_7
-
-    // Aplicar retardo
+    BL leer_botones
+    BL incrementar_contador
+    BL mostrar_digito
     BL delay
+    B main_loop
 
-    B loop
+/* --- Subrutinas --- */
 
-no_reset:
-    STR R5, [R4]
-
-estado_0: // Enciende a, b, c, d, e, f (0)
-    LDR R0, =GPIOA_ODR
+/* Configurar relojes */
+reloj_config:
+    LDR R0, =RCC_AHB1ENR
     LDR R1, [R0]
-    BIC R1, #(LED9_ON | LED10_ON | LED11_ON | LED12_ON | LED13_ON | LED14_ON | LED15_ON) // Apagar todos
-    ORR R1, #(LED9_ON | LED10_ON | LED11_ON | LED12_ON | LED13_ON | LED14_ON) // Encender a, b, c, d, e, f
+    ORR R1, #(GPIOA_EN | GPIOB_EN | GPIOC_EN)
     STR R1, [R0]
     BX LR
 
-estado_1: // Enciende b, c (1)
-    LDR R0, =GPIOA_ODR
+/* Leer estado de botones */
+leer_botones:
+    /* Guardamos LR en R10 */
+    MOV R10, LR
+
+    LDR R0, =GPIOC_IDR
     LDR R1, [R0]
-    BIC R1, #(LED9_ON | LED10_ON | LED11_ON | LED12_ON | LED13_ON | LED14_ON | LED15_ON) // Apagar todos
-    ORR R1, #(LED10_ON | LED11_ON) // Encender b, c
-    STR R1, [R0]
-    BX LR
 
-estado_2: // Enciende a, b, d, e, g (2)
-    LDR R0, =GPIOA_ODR
+    TST R1, #BTN_UP_PIN
+    BEQ boton_aumentar
+
+    TST R1, #BTN_DOWN_PIN
+    BEQ boton_disminuir
+
+    /* Restauramos LR desde R10 */
+    BX R10
+
+/* Manejo de botón aumentar */
+boton_aumentar:
+    LDR R0, =delay_var
     LDR R1, [R0]
-    BIC R1, #(LED9_ON | LED10_ON | LED11_ON | LED12_ON | LED13_ON | LED14_ON | LED15_ON) // Apagar todos
-    ORR R1, #(LED9_ON | LED10_ON | LED12_ON | LED13_ON | LED15_ON) // Encender a, b, d, e, g
-    STR R1, [R0]
-    BX LR
+    LDR R2, =delay_min
+    LDR R2, [R2]
+    LDR R3, =step_value
+    LDR R3, [R3]
 
-estado_3: // Enciende a, b, c, d, g (3)
-    LDR R0, =GPIOA_ODR
+    SUBS R1, R1, R3
+    CMP R1, R2
+    BGT guardar_delay
+    MOV R1, R2
+
+guardar_delay:
+    STR R1, [R0]
+    BL wait_release
+    BX R10
+
+/* Manejo de botón disminuir */
+boton_disminuir:
+    LDR R0, =delay_var
     LDR R1, [R0]
-    BIC R1, #(LED9_ON | LED10_ON | LED11_ON | LED12_ON | LED13_ON | LED14_ON | LED15_ON) // Apagar todos
-    ORR R1, #(LED9_ON | LED10_ON | LED11_ON | LED12_ON | LED15_ON) // Encender a, b, c, d, g
-    STR R1, [R0]
-    BX LR
+    LDR R2, =delay_max
+    LDR R2, [R2]
+    LDR R3, =step_value
+    LDR R3, [R3]
 
-estado_4: // Enciende b, c, f, g (4)
-    LDR R0, =GPIOA_ODR
-    LDR R1, [R0]
-    BIC R1, #(LED9_ON | LED10_ON | LED11_ON | LED12_ON | LED13_ON | LED14_ON | LED15_ON) // Apagar todos
-    ORR R1, #(LED10_ON | LED11_ON | LED14_ON | LED15_ON) // Encender b, c, f, g
-    STR R1, [R0]
-    BX LR
+    ADDS R1, R1, R3
+    CMP R1, R2
+    BLT guardar_delay
+    MOV R1, R2
+    B guardar_delay
 
-estado_5: // Enciende a, c, d, f, g (5)
-    LDR R0, =GPIOA_ODR
-    LDR R1, [R0]
-    BIC R1, #(LED9_ON | LED10_ON | LED11_ON | LED12_ON | LED13_ON | LED14_ON | LED15_ON) // Apagar todos
-    ORR R1, #(LED9_ON | LED11_ON | LED12_ON | LED14_ON | LED15_ON) // Encender a, c, d, f, g
-    STR R1, [R0]
-    BX LR
-
-estado_6: // Enciende a, c, d, e, f, g (6)
-    LDR R0, =GPIOA_ODR
-    LDR R1, [R0]
-    BIC R1, #(LED9_ON | LED10_ON | LED11_ON | LED12_ON | LED13_ON | LED14_ON | LED15_ON) // Apagar todos
-    ORR R1, #(LED9_ON | LED11_ON | LED12_ON | LED13_ON | LED14_ON | LED15_ON) // Encender a, c, d, e, f, g
-    STR R1, [R0]
-    BX LR
-
-estado_7: // Enciende a, b, c (7)
-    LDR R0, =GPIOA_ODR
-    LDR R1, [R0]
-    BIC R1, #(LED9_ON | LED10_ON | LED11_ON | LED12_ON | LED13_ON | LED14_ON | LED15_ON) // Apagar todos
-    ORR R1, #(LED9_ON | LED10_ON | LED11_ON) // Encender a, b, c
-    STR R1, [R0]
-    BX LR
-
-apagado_total: // Apaga todas las LEDs de los segmentos
-    LDR R0, =GPIOA_ODR
-    LDR R1, [R0]
-    BIC R1, #(LED9_ON | LED10_ON | LED11_ON | LED12_ON | LED13_ON | LED14_ON | LED15_ON) // Apagar todos
-    STR R1, [R0]
-    BX LR
-
-boton_subir:
-    LDR R5, =delay_var
-    LDR R6, [R5]
-    LDR R7, =delay_min
-    LDR R8, [R7]
-    LDR R9, =step_value
-    LDR R9, [R9]          // Cargar paso de incremento/decremento
-    SUBS R6, R6, R9
-    CMP R6, R8
-    BGT subir_vel
-    MOV R6, R8
-subir_vel:
-    STR R6, [R5]
-    B wait_release
-
-boton_bajar:
-    LDR R5, =delay_var
-    LDR R6, [R5]
-    LDR R7, =delay_max
-    LDR R8, [R7]
-    LDR R9, =step_value
-    LDR R9, [R9]          // Cargar paso de incremento/decremento
-    ADDS R6, R6, R9
-    CMP R6, R8
-    BLT bajar_vel
-    MOV R6, R8
-bajar_vel:
-    STR R6, [R5]
-    B wait_release
-
+/* Esperar a soltar botón con debounce */
 wait_release:
+    /* Usamos R11 para el contador de debounce */
+    LDR R11, =100000       // Valor para delay de debounce
+wait_loop:
     LDR R0, =GPIOC_IDR
     LDR R1, [R0]
     TST R1, #BTN_UP_PIN
-    BEQ wait_release
+    BEQ wait_loop
     TST R1, #BTN_DOWN_PIN
-    BEQ wait_release
-    B loop
+    BEQ wait_loop
+    SUBS R11, #1
+    BNE wait_loop
+    BX LR
 
-// Subrutina para actualizar LEDs de velocidad
+/* Incrementar contador (0-7) */
+incrementar_contador:
+    LDR R0, =contador
+    LDR R1, [R0]
+    ADDS R1, #1
+    CMP R1, #8
+    BNE no_reset
+    MOV R1, #0
+no_reset:
+    STR R1, [R0]
+    BX LR
+
+/* Mostrar dígito según contador */
+mostrar_digito:
+    LDR R0, =contador
+    LDR R1, [R0]
+
+    CMP R1, #0
+    BEQ display_0
+    CMP R1, #1
+    BEQ display_1
+    CMP R1, #2
+    BEQ display_2
+    CMP R1, #3
+    BEQ display_3
+    CMP R1, #4
+    BEQ display_4
+    CMP R1, #5
+    BEQ display_5
+    CMP R1, #6
+    BEQ display_6
+    CMP R1, #7
+    BEQ display_7
+    BX LR
+
+/* Patrones para display de 7 segmentos - CORREGIDOS para segmentos G y B */
+display_0:  // a, b, c, d, e, f
+    LDR R0, =GPIOA_ODR
+    MOV R1, #(SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F)
+    STR R1, [R0]
+    BX LR
+
+display_1:  // b, c
+    LDR R0, =GPIOA_ODR
+    MOV R1, #(SEG_B | SEG_C)
+    STR R1, [R0]
+    BX LR
+
+display_2:  // a, b, g, e, d
+    LDR R0, =GPIOA_ODR
+    MOV R1, #(SEG_A | SEG_B | SEG_G | SEG_E | SEG_D)
+    STR R1, [R0]
+    BX LR
+
+display_3:  // a, b, g, c, d
+    LDR R0, =GPIOA_ODR
+    MOV R1, #(SEG_A | SEG_B | SEG_G | SEG_C | SEG_D)
+    STR R1, [R0]
+    BX LR
+
+display_4:  // f, g, b, c
+    LDR R0, =GPIOA_ODR
+    MOV R1, #(SEG_F | SEG_G | SEG_B | SEG_C)
+    STR R1, [R0]
+    BX LR
+
+display_5:  // a, f, g, c, d
+    LDR R0, =GPIOA_ODR
+    MOV R1, #(SEG_A | SEG_F | SEG_G | SEG_C | SEG_D)
+    STR R1, [R0]
+    BX LR
+
+display_6:  // a, f, g, c, d, e
+    LDR R0, =GPIOA_ODR
+    MOV R1, #(SEG_A | SEG_F | SEG_G | SEG_C | SEG_D | SEG_E)
+    STR R1, [R0]
+    BX LR
+
+display_7:  // a, b, c
+    LDR R0, =GPIOA_ODR
+    MOV R1, #(SEG_A | SEG_B | SEG_C)
+    STR R1, [R0]
+    BX LR
+
+/* Actualizar LEDs de velocidad - CORREGIDO para PB6 */
 actualizar_leds_velocidad:
     LDR R0, =delay_var
     LDR R1, [R0]
@@ -297,69 +291,57 @@ actualizar_leds_velocidad:
     LDR R3, =delay_max
     LDR R3, [R3]
 
-    // Calcular rango de velocidad
     SUB R4, R3, R2        // Rango total
-    MOV R7, #3
-    UDIV R4, R4, R7       // Dividir en 3 partes iguales
+    MOV R5, #3
+    UDIV R4, R4, R5       // Dividir en 3 partes
 
-    // Configurar LEDs según velocidad
-    LDR R5, =GPIOB_ODR
-    LDR R6, [R5]
+    ADD R5, R2, R4        // Límite inferior velocidad media
+    ADD R6, R5, R4        // Límite superior velocidad media
 
-    // Apagar todos los LEDs de velocidad primero
-    BIC R6, #(LED6_ON | LED7_ON | LED8_ON)
+    LDR R7, =GPIOB_ODR
+    LDR R8, [R7]          // Leer estado actual
+    BIC R8, #(LED_VEL1 | LED_VEL2 | LED_VEL3)  // Apagar todos los LEDs de velocidad
 
-    // Determinar qué LED encender
-    ADD R7, R2, R4        // Límite inferior para velocidad media
-    ADD R8, R7, R4        // Límite superior para velocidad media
+    CMP R1, R5
+    BLS velocidad_lenta
 
-    // Comparaciones para determinar la velocidad
-    CMP R1, R7
-    BLS velocidad_lenta    // Si R1 <= R7 (delay grande), velocidad lenta
+    CMP R1, R6
+    BLS velocidad_media
 
-    CMP R1, R8
-    BLS velocidad_media    // Si R1 <= R8, velocidad media
-
-    // Si no, velocidad rápida
-    ORR R6, #LED8_ON
-    B fin_actualizacion
+    // Velocidad rápida - encender LED_VEL3 (PB8)
+    ORR R8, #LED_VEL3
+    B fin_velocidad
 
 velocidad_lenta:
-    ORR R6, #LED6_ON
-    B fin_actualizacion
+    // Velocidad lenta - encender LED_VEL1 (PB6)
+    ORR R8, #LED_VEL1
+    B fin_velocidad
 
 velocidad_media:
-    ORR R6, #LED7_ON
+    // Velocidad media - encender LED_VEL2 (PB7)
+    ORR R8, #LED_VEL2
 
-fin_actualizacion:
-    // Aplicar cambios
-    STR R6, [R5]
+fin_velocidad:
+    STR R8, [R7]          // Escribir nuevos valores
     BX LR
 
-reloj:
-    // Habilitar relojes para los puertos
-    LDR R0, =RCC_AHB1ENR
-    LDR R1, [R0]
-    ORR R1, #(GPIOA_EN | GPIOB_EN | GPIOC_EN)
-    STR R1, [R0]
-    BX LR
-
+/* Retardo variable */
 delay:
     LDR R0, =delay_var
     LDR R1, [R0]
 delay_loop:
-    SUBS R1, R1, #1
+    SUBS R1, #1
     BNE delay_loop
     BX LR
 
-// Sección de datos
+/* --- Sección de datos --- */
 .section .data
-delay_var: .word 150000     // Valor de delay inicial 1.5s
-delay_min: .word 50000      // Delay min de 0.5s
-delay_max: .word 300000     // Delay max de 3.0s
-contador: .word 0           // Variable para el contador
-step_value: .word 50000     // Paso de incremento/decremento
+.align 4
+delay_var:    .word 15000000    // Valor inicial (0.5s aprox)
+delay_min:    .word 1000000     // Mínimo
+delay_max:    .word 30000000    // Máximo
+step_value:   .word 100000     // Paso de cambio
+contador:     .word 0          // Contador actual
 
-// Directivas finales
 .align
 .end
